@@ -26,9 +26,9 @@ print("-" * 50)
 # Test ABA generation with APCA number (single payment - backward compatibility)
 aba_content = generate_aba_file(
     asic_data,  # Function now handles single item or list
-    "063-245",
+    "063245",
     "10758330", 
-    "TT Accountancy P",
+    "TT Accountancy Pty Ltd",
     datetime(2025, 7, 28),
     "301500"  # APCA number
 )
@@ -60,7 +60,7 @@ print(f"- Debit Detail (Type 1): Balancing debit from user's account")
 print(f"- Trailer (Type 7): File totals and counts")
 print(f"\nPayment details:")
 print(f"- Credit: To Reserve Bank of Australia (BSB: 093-003, Acc: 317118)")
-print(f"- Debit: From user's account (BSB: 063-245, Acc: 10758330)")
+print(f"- Debit: From user's account (BSB: 063245, Acc: 10758330)")
 print(f"- Amount: ${asic_data['amount']}")
 print(f"- Reference: {asic_data['asic_reference']}")
 print(f"- Record count: 2 (balanced)")

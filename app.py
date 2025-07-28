@@ -187,12 +187,12 @@ def main():
     col1, col2 = st.columns(2)
     
     with col1:
-        user_bsb = st.text_input("BSB", value="063-245", help="Your bank BSB number")
+        user_bsb = st.text_input("BSB", value="063245", help="Your bank BSB number")
         user_account = st.text_input("Account Number", value="10758330", help="Your bank account number")
         apca_number = st.text_input("APCA Number", value="301500", help="Your APCA User ID (6 digits)")
     
     with col2:
-        user_name = st.text_input("Account Name", value="TT Accountancy P", help="Your account name (max 16 chars)")
+        user_name = st.text_input("Account Name", value="TT Accountancy Pty Ltd", help="Your account name")
         processing_date = st.date_input("Processing Date", datetime.now())
     
     # File upload

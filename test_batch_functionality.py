@@ -50,9 +50,9 @@ print("-" * 60)
 
 aba_content = generate_aba_file(
     batch_asic_data,
-    "063-245",
+    "063245",
     "10758330", 
-    "TT Accountancy P",
+    "TT Accountancy Pty Ltd",
     datetime(2025, 7, 28),
     "301500"
 )
@@ -86,4 +86,4 @@ print(f"- Total payments: {len(batch_asic_data)}")
 print(f"- Total amount: ${total_amount:.2f}")
 print(f"- Total records: {len(batch_asic_data) + 1} (balanced)")
 print(f"- All payments to: Reserve Bank of Australia (093-003, 317118)")
-print(f"- Single debit from: User account (063-245, 10758330)")
+print(f"- Single debit from: User account (063245, 10758330)")

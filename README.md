@@ -35,7 +35,7 @@ streamlit run app.py
 
 ## Usage
 
-1. Review pre-filled bank details (BSB: 063-245, Account: 10758330, APCA: 301500)
+1. Review pre-filled bank details (BSB: 063245, Account: 10758330, APCA: 301500)
 2. Upload one or more ASIC statement PDFs
 3. Review the extracted information for each company
 4. Click "Generate Batch ABA File" to create the payment file
