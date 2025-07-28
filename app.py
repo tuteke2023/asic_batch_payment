@@ -5,6 +5,110 @@ from datetime import datetime
 import io
 import PyPDF2
 import pdfplumber
+import sqlite3
+import hashlib
+import os
+
+# Database functions
+def init_database():
+    """Initialize SQLite database for tracking processed statements"""
+    conn = sqlite3.connect('asic_statements.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS processed_statements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_name TEXT NOT NULL,
+            acn TEXT NOT NULL,
+            asic_reference TEXT NOT NULL,
+            bpay_reference TEXT NOT NULL,
+            amount REAL NOT NULL,
+            file_hash TEXT NOT NULL UNIQUE,
+            processed_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            aba_filename TEXT,
+            batch_id TEXT
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+def get_file_hash(file_content):
+    """Generate SHA-256 hash of file content"""
+    return hashlib.sha256(file_content).hexdigest()
+
+def check_duplicate_statement(file_hash, asic_reference, bpay_reference):
+    """Check if statement has already been processed"""
+    conn = sqlite3.connect('asic_statements.db')
+    cursor = conn.cursor()
+    
+    # Check by file hash first (exact same file)
+    cursor.execute('''
+        SELECT company_name, processed_date, aba_filename 
+        FROM processed_statements 
+        WHERE file_hash = ?
+    ''', (file_hash,))
+    
+    file_duplicate = cursor.fetchone()
+    
+    # Check by ASIC reference and BPay reference (same payment)
+    cursor.execute('''
+        SELECT company_name, processed_date, aba_filename 
+        FROM processed_statements 
+        WHERE asic_reference = ? AND bpay_reference = ?
+    ''', (asic_reference, bpay_reference))
+    
+    payment_duplicate = cursor.fetchone()
+    
+    conn.close()
+    
+    return {
+        'file_duplicate': file_duplicate,
+        'payment_duplicate': payment_duplicate
+    }
+
+def save_processed_statement(asic_data, file_hash, aba_filename, batch_id):
+    """Save processed statement to database"""
+    conn = sqlite3.connect('asic_statements.db')
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            INSERT INTO processed_statements 
+            (company_name, acn, asic_reference, bpay_reference, amount, file_hash, aba_filename, batch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            asic_data['company_name'],
+            asic_data['acn'],
+            asic_data['asic_reference'],
+            asic_data['bpay_reference'],
+            float(asic_data['amount']),
+            file_hash,
+            aba_filename,
+            batch_id
+        ))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def get_processed_statements():
+    """Get all processed statements from database"""
+    conn = sqlite3.connect('asic_statements.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT company_name, acn, asic_reference, amount, processed_date, aba_filename
+        FROM processed_statements 
+        ORDER BY processed_date DESC
+    ''')
+    
+    results = cursor.fetchall()
+    conn.close()
+    
+    return results
 
 def extract_asic_data(pdf_file):
     """Extract relevant data from ASIC statement PDF"""
@@ -178,9 +282,28 @@ def generate_aba_file(asic_data_list, user_bsb, user_account, user_name, process
 def main():
     st.set_page_config(page_title="ASIC ABA File Generator", page_icon="🏦")
     
+    # Initialize database
+    init_database()
+    
     st.title("🏦 ASIC ABA File Generator")
     st.markdown("Generate ABA files for ASIC payments from uploaded statements")
     st.info("ℹ️ Configured for TT Accountancy Pty Ltd - fields are pre-filled with your details")
+    
+    # Add sidebar for processed statements
+    with st.sidebar:
+        st.header("📋 Processed Statements")
+        if st.button("View Processed Statements"):
+            st.session_state.show_processed = True
+        
+        if st.session_state.get('show_processed', False):
+            processed = get_processed_statements()
+            if processed:
+                st.subheader("Recently Processed")
+                for stmt in processed[:10]:  # Show last 10
+                    st.text(f"• {stmt[0]} - ${stmt[3]:.2f}")
+                    st.caption(f"  {stmt[2]} | {stmt[4][:10]}")
+            else:
+                st.text("No statements processed yet")
     
     # User bank details input
     st.header("Your Bank Details")
@@ -205,38 +328,96 @@ def main():
     )
     
     if uploaded_files:
-        # Process all PDFs
+        # Process all PDFs with duplicate checking
         asic_data_list = []
+        duplicates_found = []
         total_amount = 0
         
         with st.spinner(f"Extracting data from {len(uploaded_files)} PDF(s)..."):
             for i, uploaded_file in enumerate(uploaded_files):
                 try:
+                    # Get file content for hashing
+                    file_content = uploaded_file.read()
+                    uploaded_file.seek(0)  # Reset file pointer
+                    file_hash = get_file_hash(file_content)
+                    
+                    # Extract ASIC data
                     asic_data = extract_asic_data(uploaded_file)
+                    
+                    # Check for duplicates
+                    duplicate_check = check_duplicate_statement(
+                        file_hash, 
+                        asic_data['asic_reference'], 
+                        asic_data['bpay_reference']
+                    )
+                    
+                    # Add duplicate status to data
+                    asic_data['is_duplicate'] = duplicate_check['file_duplicate'] is not None or duplicate_check['payment_duplicate'] is not None
+                    asic_data['duplicate_info'] = duplicate_check
+                    asic_data['file_hash'] = file_hash
+                    asic_data['filename'] = uploaded_file.name
+                    
                     asic_data_list.append(asic_data)
-                    total_amount += float(asic_data['amount'])
+                    
+                    if asic_data['is_duplicate']:
+                        duplicates_found.append(asic_data)
+                    else:
+                        total_amount += float(asic_data['amount'])
+                        
                 except Exception as e:
                     st.error(f"Error processing {uploaded_file.name}: {str(e)}")
         
         if asic_data_list:
             # Display summary
-            st.success(f"✅ Data extracted from {len(asic_data_list)} statement(s)!")
+            valid_statements = [data for data in asic_data_list if not data['is_duplicate']]
             
-            # Total amount summary
-            st.metric("Total Batch Amount", f"${total_amount:.2f}", help="Total amount for all ASIC payments")
+            if duplicates_found:
+                st.warning(f"⚠️ Found {len(duplicates_found)} duplicate statement(s)")
+                st.success(f"✅ {len(valid_statements)} new statement(s) ready for processing")
+            else:
+                st.success(f"✅ Data extracted from {len(asic_data_list)} statement(s)!")
             
-            # Display each extracted statement
-            st.subheader("Extracted ASIC Statements")
-            for i, asic_data in enumerate(asic_data_list):
-                with st.expander(f"Statement {i+1}: {asic_data['company_name']} - ${asic_data['amount']}"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.metric("Company", asic_data['company_name'])
-                        st.metric("ACN", asic_data['acn'])
-                        st.metric("Amount", f"${asic_data['amount']}")
-                    with col2:
-                        st.metric("ASIC Reference", asic_data['asic_reference'])
-                        st.metric("BPay Reference", asic_data['bpay_reference'])
+            # Show duplicate warnings first
+            if duplicates_found:
+                st.subheader("🚨 Duplicate Statements Detected")
+                for dup_data in duplicates_found:
+                    with st.expander(f"⚠️ DUPLICATE: {dup_data['company_name']} - ${dup_data['amount']}", expanded=True):
+                        st.error("This statement has already been processed!")
+                        
+                        if dup_data['duplicate_info']['file_duplicate']:
+                            st.write("**Exact same file processed on:**", dup_data['duplicate_info']['file_duplicate'][1][:19])
+                            st.write("**Original ABA file:**", dup_data['duplicate_info']['file_duplicate'][2])
+                        
+                        if dup_data['duplicate_info']['payment_duplicate']:
+                            st.write("**Same payment processed on:**", dup_data['duplicate_info']['payment_duplicate'][1][:19])
+                            st.write("**Original ABA file:**", dup_data['duplicate_info']['payment_duplicate'][2])
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.metric("Company", dup_data['company_name'])
+                            st.metric("ACN", dup_data['acn'])
+                            st.metric("Amount", f"${dup_data['amount']}")
+                        with col2:
+                            st.metric("ASIC Reference", dup_data['asic_reference'])
+                            st.metric("BPay Reference", dup_data['bpay_reference'])
+            
+            # Total amount summary (excluding duplicates)
+            if valid_statements:
+                st.metric("Total Batch Amount", f"${total_amount:.2f}", help="Total amount for new ASIC payments (excluding duplicates)")
+                
+                # Display each new statement
+                st.subheader("New ASIC Statements")
+                for i, asic_data in enumerate(valid_statements):
+                    status_icon = "✅"
+                    with st.expander(f"{status_icon} Statement {i+1}: {asic_data['company_name']} - ${asic_data['amount']}"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.metric("Company", asic_data['company_name'])
+                            st.metric("ACN", asic_data['acn'])
+                            st.metric("Amount", f"${asic_data['amount']}")
+                        with col2:
+                            st.metric("ASIC Reference", asic_data['asic_reference'])
+                            st.metric("BPay Reference", asic_data['bpay_reference'])
         
             # Bank details reminder
             st.info("""
@@ -247,11 +428,12 @@ def main():
             - Name: ASIC, Official Administered Receipts Account
             """)
             
-            # Generate ABA file
-            if st.button("Generate Batch ABA File", type="primary"):
+            # Generate ABA file (only for non-duplicate statements)
+            if valid_statements and st.button("Generate Batch ABA File", type="primary", disabled=len(valid_statements)==0):
                 if user_bsb and user_account and user_name and apca_number:
+                    # Generate ABA content for valid statements only
                     aba_content = generate_aba_file(
-                        asic_data_list, 
+                        valid_statements, 
                         user_bsb, 
                         user_account, 
                         user_name,
@@ -260,7 +442,15 @@ def main():
                     )
                     
                     # Create filename with date and company count
-                    filename = f"ASIC_Batch_{len(asic_data_list)}companies_{processing_date.strftime('%Y%m%d')}.ABA"
+                    filename = f"ASIC_Batch_{len(valid_statements)}companies_{processing_date.strftime('%Y%m%d')}.ABA"
+                    batch_id = f"batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                    
+                    # Save processed statements to database
+                    saved_count = 0
+                    for asic_data in valid_statements:
+                        if save_processed_statement(asic_data, asic_data['file_hash'], filename, batch_id):
+                            saved_count += 1
+                    
                     st.download_button(
                         label="📥 Download Batch ABA File",
                         data=aba_content,
@@ -269,7 +459,8 @@ def main():
                     )
                     
                     # Show batch summary
-                    st.success(f"✅ ABA file generated for {len(asic_data_list)} companies with total amount ${total_amount:.2f}")
+                    st.success(f"✅ ABA file generated for {len(valid_statements)} companies with total amount ${total_amount:.2f}")
+                    st.info(f"💾 {saved_count} statements saved to database to prevent future duplicates")
                     
                     # Show preview
                     st.subheader("ABA File Preview")
@@ -278,16 +469,20 @@ def main():
                     # Show batch details
                     st.subheader("Batch Payment Summary")
                     batch_df = []
-                    for i, asic_data in enumerate(asic_data_list):
+                    for i, asic_data in enumerate(valid_statements):
                         batch_df.append({
                             "Company": asic_data['company_name'],
                             "ACN": asic_data['acn'],
                             "Amount": f"${asic_data['amount']}",
-                            "BPay Ref": asic_data['bpay_reference']
+                            "BPay Ref": asic_data['bpay_reference'],
+                            "Status": "✅ Processed"
                         })
                     st.dataframe(batch_df, use_container_width=True)
                 else:
                     st.error("Please fill in all your bank details including APCA number")
+            
+            elif not valid_statements:
+                st.warning("No new statements to process. All uploaded statements are duplicates.")
 
 if __name__ == "__main__":
     main()

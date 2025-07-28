@@ -11,17 +11,44 @@ This is a Streamlit application that generates ABA (Australian Bankers Associati
 - **PDF extraction logic** using pdfplumber and PyPDF2
 - **ABA file generation** following CEMTEX standard (120 chars per record)
 - **Batch processing** for multiple companies in single ABA file
+- **Duplicate detection system** using SQLite database to prevent repeat payments
 
 ### Core Functions
 1. `extract_asic_data(pdf_file)` - Extracts payment details from ASIC PDFs
 2. `generate_aba_file(asic_data_list, user_bsb, user_account, user_name, processing_date, apca_number)` - Creates CEMTEX-compliant ABA files
 3. `format_aba_amount(amount_str)` - Converts dollar amounts to ABA cent format
 
+### Database Functions
+1. `init_database()` - Creates SQLite database for tracking processed statements
+2. `check_duplicate_statement(file_hash, asic_reference, bpay_reference)` - Detects duplicate files/payments
+3. `save_processed_statement(asic_data, file_hash, aba_filename, batch_id)` - Records processed statements
+4. `get_processed_statements()` - Retrieves processing history
+
 ### ABA File Structure
 - **Header Record (Type 0)**: File identification, user details, APCA number
 - **Credit Records (Type 1)**: One per company, payments TO Reserve Bank of Australia
 - **Debit Record (Type 1)**: Single balancing debit FROM user's account
 - **Trailer Record (Type 7)**: File totals and record count
+
+## Duplicate Detection System
+
+The app includes a comprehensive duplicate detection system to prevent accidental repeat payments:
+
+### Detection Methods
+1. **File Hash Matching**: Uses SHA-256 hash to detect identical PDF files
+2. **Payment Reference Matching**: Checks ASIC reference + BPay reference combinations
+3. **Real-time Warnings**: Shows duplicate alerts during file upload
+
+### Database Schema
+- **processed_statements table**: Stores all processed payment details
+- **Unique constraints**: Prevents duplicate file hashes from being saved
+- **Audit trail**: Tracks when statements were processed and which ABA files were generated
+
+### User Experience
+- **Visual indicators**: Duplicate statements show with ⚠️ warning icons
+- **Detailed warnings**: Shows when/how statement was previously processed
+- **Processing prevention**: Only allows new statements to be included in ABA files
+- **History sidebar**: Quick access to recently processed statements
 
 ## Important Details
 
