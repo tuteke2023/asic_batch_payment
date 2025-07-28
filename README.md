@@ -33,10 +33,17 @@ The app automatically uses the following RBA details for ASIC payments:
 pip install -r requirements.txt
 ```
 
-2. Run the app:
+2. Set the password environment variable:
+```bash
+export ASIC_APP_PASSWORD="your_secure_password_here"
+```
+
+3. Run the app:
 ```bash
 streamlit run app.py
 ```
+
+**Note**: The app will not work without the `ASIC_APP_PASSWORD` environment variable set.
 
 ## Usage
 
@@ -61,7 +68,7 @@ streamlit run app.py
 - **Session Management**: Automatic logout and session clearing
 - **Local Processing**: Financial data processed locally, not on servers
 - **Database Security**: SQLite database excluded from version control
-- **Environment Variables**: Password can be configured via ASIC_APP_PASSWORD env var
+- **Environment Variables**: Password MUST be configured via ASIC_APP_PASSWORD env var (not stored in code)
 
 ## Security Note
 

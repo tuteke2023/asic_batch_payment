@@ -27,7 +27,7 @@ This is a Streamlit application that generates ABA (Australian Bankers Associati
 
 ### Security Functions
 1. `check_password()` - Handles password authentication and session management
-2. Password protection using environment variable or default: "TTAccountancy2025!"
+2. Password protection requires ASIC_APP_PASSWORD environment variable (no hardcoded password)
 3. Session state management for login/logout functionality
 
 ### ABA File Structure
@@ -100,9 +100,43 @@ The app includes a comprehensive duplicate detection system to prevent accidenta
 
 ### Authentication
 - **Password Protection**: App requires password before showing any content
-- **Environment Variables**: Password configurable via `ASIC_APP_PASSWORD` 
+- **Environment Variables**: Password REQUIRED via `ASIC_APP_PASSWORD` (no hardcoded passwords)
 - **Session Management**: Proper login/logout with session state clearing
 - **Access Control**: All sensitive functionality protected behind authentication
+- **Public Repository Safe**: No secrets stored in public GitHub repository
+
+### Password Setup Instructions
+
+**For Local Development:**
+```bash
+# Mac/Linux Terminal:
+export ASIC_APP_PASSWORD="your_secure_password_here"
+streamlit run app.py
+
+# Windows Command Prompt:
+set ASIC_APP_PASSWORD=your_secure_password_here
+streamlit run app.py
+
+# Windows PowerShell:
+$env:ASIC_APP_PASSWORD="your_secure_password_here"
+streamlit run app.py
+```
+
+**For Streamlit Cloud Deployment:**
+1. Go to Streamlit Cloud dashboard
+2. Click on app settings
+3. Navigate to "Secrets" section
+4. Add configuration:
+```toml
+ASIC_APP_PASSWORD = "your_secure_password_here"
+```
+
+**Using .env file (Local Only):**
+Create `.env` file in project root:
+```
+ASIC_APP_PASSWORD=your_secure_password_here
+```
+Note: `.env` files are excluded from git via `.gitignore`
 
 ### Data Security
 - **Local Processing**: All financial data processed locally, not on servers

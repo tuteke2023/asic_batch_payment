@@ -15,9 +15,14 @@ def check_password():
     
     def password_entered():
         """Checks whether a password entered by the user is correct."""
-        # Use environment variable if set, otherwise use default
-        correct_password = os.getenv("ASIC_APP_PASSWORD", "TTAccountancy2025!")
+        # SECURITY: Password must be set via environment variable
+        correct_password = os.getenv("ASIC_APP_PASSWORD")
         
+        if not correct_password:
+            st.error("🚨 Security Error: Password not configured. Contact administrator.")
+            st.session_state["password_correct"] = False
+            return
+            
         if st.session_state["password"] == correct_password:
             st.session_state["password_correct"] = True
             del st.session_state["password"]  # Don't store password
@@ -31,9 +36,10 @@ def check_password():
             type="password", 
             on_change=password_entered, 
             key="password",
-            help="Contact TT Accountancy for access"
+            help="Contact TT Accountancy for the secure access password"
         )
-        st.info("This application is password protected to secure financial data.")
+        st.info("🔒 This application is password protected to secure financial data.")
+        st.warning("⚠️ Password must be configured by administrator via environment variable.")
         return False
     elif not st.session_state["password_correct"]:
         # Password not correct, show input + error
@@ -42,9 +48,9 @@ def check_password():
             type="password", 
             on_change=password_entered, 
             key="password",
-            help="Contact TT Accountancy for access"
+            help="Contact TT Accountancy for the secure access password"
         )
-        st.error("😞 Password incorrect. Please contact TT Accountancy for access.")
+        st.error("😞 Password incorrect. Contact TT Accountancy for the correct password.")
         return False
     else:
         # Password correct
