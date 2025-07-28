@@ -1,0 +1,4 @@
+[ZoneTransfer]
+ZoneId=3
+ReferrerUrl=https://go.xero.com/Bank/ViewTransaction.aspx?bankTransactionID=d23999b9-b283-4a16-b3e0-2e8750da2ae2&accountID=96cd38ee-4847-4276-958e-b55433e513e1
+HostUrl=https://go.xero.com/AccountsPayable/ExportBatchFile.aspx?bankTransactionID=d23999b9-b283-4a16-b3e0-2e8750da2ae2
