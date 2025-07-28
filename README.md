@@ -2,6 +2,8 @@
 
 A Streamlit application that generates ABA files for ASIC payments. Upload multiple ASIC statement PDFs and the app will extract payment details and create a properly formatted ABA file for CommBank processing.
 
+**Configured for TT Accountancy Pty Ltd** - Bank details are pre-filled for convenience.
+
 ## Features
 
 - **Multiple File Upload**: Upload multiple ASIC PDF statements for batch processing
@@ -33,7 +35,7 @@ streamlit run app.py
 
 ## Usage
 
-1. Enter your bank details (BSB, Account Number, Account Name, APCA Number)
+1. Review pre-filled bank details (BSB: 063-245, Account: 10758330, APCA: 301500)
 2. Upload one or more ASIC statement PDFs
 3. Review the extracted information for each company
 4. Click "Generate Batch ABA File" to create the payment file

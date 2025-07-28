@@ -180,18 +180,19 @@ def main():
     
     st.title("🏦 ASIC ABA File Generator")
     st.markdown("Generate ABA files for ASIC payments from uploaded statements")
+    st.info("ℹ️ Configured for TT Accountancy Pty Ltd - fields are pre-filled with your details")
     
     # User bank details input
     st.header("Your Bank Details")
     col1, col2 = st.columns(2)
     
     with col1:
-        user_bsb = st.text_input("BSB", placeholder="063-245", help="Your bank BSB number")
-        user_account = st.text_input("Account Number", placeholder="10758330", help="Your bank account number")
+        user_bsb = st.text_input("BSB", value="063-245", help="Your bank BSB number")
+        user_account = st.text_input("Account Number", value="10758330", help="Your bank account number")
         apca_number = st.text_input("APCA Number", value="301500", help="Your APCA User ID (6 digits)")
     
     with col2:
-        user_name = st.text_input("Account Name", placeholder="TT Accountancy P", help="Your account name (max 16 chars)")
+        user_name = st.text_input("Account Name", value="TT Accountancy P", help="Your account name (max 16 chars)")
         processing_date = st.date_input("Processing Date", datetime.now())
     
     # File upload
