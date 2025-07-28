@@ -9,6 +9,47 @@ import sqlite3
 import hashlib
 import os
 
+# Authentication function
+def check_password():
+    """Returns True if the user has entered the correct password."""
+    
+    def password_entered():
+        """Checks whether a password entered by the user is correct."""
+        # Use environment variable if set, otherwise use default
+        correct_password = os.getenv("ASIC_APP_PASSWORD", "TTAccountancy2025!")
+        
+        if st.session_state["password"] == correct_password:
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Don't store password
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # First run, show input for password
+        st.text_input(
+            "🔐 Enter Password", 
+            type="password", 
+            on_change=password_entered, 
+            key="password",
+            help="Contact TT Accountancy for access"
+        )
+        st.info("This application is password protected to secure financial data.")
+        return False
+    elif not st.session_state["password_correct"]:
+        # Password not correct, show input + error
+        st.text_input(
+            "🔐 Enter Password", 
+            type="password", 
+            on_change=password_entered, 
+            key="password",
+            help="Contact TT Accountancy for access"
+        )
+        st.error("😞 Password incorrect. Please contact TT Accountancy for access.")
+        return False
+    else:
+        # Password correct
+        return True
+
 # Database functions
 def init_database():
     """Initialize SQLite database for tracking processed statements"""
@@ -282,15 +323,29 @@ def generate_aba_file(asic_data_list, user_bsb, user_account, user_name, process
 def main():
     st.set_page_config(page_title="ASIC ABA File Generator", page_icon="🏦")
     
-    # Initialize database
-    init_database()
-    
     st.title("🏦 ASIC ABA File Generator")
     st.markdown("Generate ABA files for ASIC payments from uploaded statements")
+    
+    # Check password first - return early if not authenticated
+    if not check_password():
+        st.stop()
+    
+    # Only show content after authentication
+    st.success("✅ Access granted - Welcome to TT Accountancy's ASIC Payment System")
     st.info("ℹ️ Configured for TT Accountancy Pty Ltd - fields are pre-filled with your details")
+    
+    # Initialize database after authentication
+    init_database()
     
     # Add sidebar for processed statements
     with st.sidebar:
+        st.header("👤 User Menu")
+        if st.button("🔓 Logout"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+        
+        st.divider()
         st.header("📋 Processed Statements")
         if st.button("View Processed Statements"):
             st.session_state.show_processed = True

@@ -12,6 +12,7 @@ This is a Streamlit application that generates ABA (Australian Bankers Associati
 - **ABA file generation** following CEMTEX standard (120 chars per record)
 - **Batch processing** for multiple companies in single ABA file
 - **Duplicate detection system** using SQLite database to prevent repeat payments
+- **Password authentication** to secure access to financial data
 
 ### Core Functions
 1. `extract_asic_data(pdf_file)` - Extracts payment details from ASIC PDFs
@@ -23,6 +24,11 @@ This is a Streamlit application that generates ABA (Australian Bankers Associati
 2. `check_duplicate_statement(file_hash, asic_reference, bpay_reference)` - Detects duplicate files/payments
 3. `save_processed_statement(asic_data, file_hash, aba_filename, batch_id)` - Records processed statements
 4. `get_processed_statements()` - Retrieves processing history
+
+### Security Functions
+1. `check_password()` - Handles password authentication and session management
+2. Password protection using environment variable or default: "TTAccountancy2025!"
+3. Session state management for login/logout functionality
 
 ### ABA File Structure
 - **Header Record (Type 0)**: File identification, user details, APCA number
@@ -92,10 +98,23 @@ The app includes a comprehensive duplicate detection system to prevent accidenta
 
 ## Security Considerations
 
-- No data stored on servers
-- PDFs and ABA files excluded from git (.gitignore)
-- Financial data processed locally only
-- Users should verify ABA files before bank processing
+### Authentication
+- **Password Protection**: App requires password before showing any content
+- **Environment Variables**: Password configurable via `ASIC_APP_PASSWORD` 
+- **Session Management**: Proper login/logout with session state clearing
+- **Access Control**: All sensitive functionality protected behind authentication
+
+### Data Security
+- **Local Processing**: All financial data processed locally, not on servers
+- **Database Exclusion**: SQLite database excluded from git (.gitignore)
+- **File Exclusion**: PDFs and ABA files excluded from version control
+- **No Cloud Storage**: No sensitive data transmitted to external services
+
+### Best Practices
+- **Password Requirements**: Strong default password with special characters
+- **Verification Required**: Users should verify ABA files before bank processing
+- **Logout Functionality**: Clear session logout in sidebar
+- **Public Access Prevention**: Password wall prevents public access to processed statements
 
 ## Development Notes
 
